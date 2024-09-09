@@ -1,0 +1,99 @@
+-- Exploratry Data Analysis
+
+select *, row_number() over(partition by company, location, industry, total_laid_off, percentage_laid_off,'date', stage, country, funds_raised_millions) as row_num from layoffs_staging;
+
+with duplicate_cte as
+(select *, row_number() 
+over(partition by company, location, industry, total_laid_off, percentage_laid_off, date , stage, country, funds_raised_millions
+) as row_num 
+from layoffs_staging
+)
+select * from duplicate_cte where row_num>1;
+
+
+
+
+CREATE TABLE layoffs_staging2 like layoffs_staging;
+alter table layoffs_staging2 add(row_num int);
+
+select * from layoffs_staging2 where row_num>1;
+
+insert into layoffs_staging2 
+select *, row_number() 
+over(partition by company, location, industry, total_laid_off, percentage_laid_off, date , stage, country, funds_raised_millions
+) as row_num 
+from layoffs_staging;
+
+delete from layoffs_staging2 where row_num>1;
+
+select company, trim(company) from layoffs_staging2;
+
+update layoffs_staging2
+set company = trim(company);
+
+
+ 
+select distinct country, trim(trailing '.' from country) from layoffs_staging2 order by 2;
+
+update layoffs_staging2
+set country =  trim(trailing '.' from country)
+where country like 'united states%';
+
+
+select date,
+str_to_date(date,'%Y/%m/%d')
+from layoffs_staging2;
+
+select date from layoffs_staging2 where date like 'd%/m%/y%';
+
+select * from layoffs_staging2;
+
+UPDATE layoffs_staging2
+SET date = 
+  CASE 
+    WHEN date LIKE '%/%/%' THEN DATE_FORMAT(STR_TO_DATE(date, '%m/%d/%Y'), '%Y/%m/%d')
+    WHEN date LIKE '%-%-%' THEN DATE_FORMAT(STR_TO_DATE(date, '%d-%m-%Y'), '%Y/%m/%d')
+  END;
+  
+  SELECT date,
+  CASE 
+    WHEN date LIKE '%/%' THEN STR_TO_DATE(date, '%m/%d/%Y')
+    WHEN date LIKE '%-%' THEN STR_TO_DATE(date, '%d-%m-%Y')
+    ELSE NULL
+  END AS standardized_date
+FROM 
+  layoffs_staging2;
+  
+  
+  alter table layoffs_staging2
+  modify column date_d date;
+  
+  select * from layoffs_staging2;
+  
+  select * from layoffs_staging2 where total_laid_off is null and percentage_laid_off is null;
+  
+  select distinct industry from layoffs_staging2;
+  
+   select t1.industry, t2.industry
+   from layoffs_staging2 t1
+   join layoffs_staging2 t2
+   on t1.company=t2.company
+   where (t1.industry is null or t1.industry='')
+   and t2.industry is not null;
+   
+   update layoffs_staging2 
+   set industry = null
+   where industry = '';
+   
+   update layoffs_staging2 t1
+   join layoffs_staging2 t2
+   on t1.company=t2.company
+   set t1.industry=t2.industry
+   where t1.industry is null and t2.industry is not null;
+   
+   delete from layoffs_staging2 
+   where total_laid_off is null and 
+   percentage_laid_off is null;
+   
+   
+     
